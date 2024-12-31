@@ -327,6 +327,52 @@ async function getAllSessions() {
     }
 }
 
+async function deleteDevice(sessionId) {
+    try {
+        const sessionPath = path.join(SESSIONS_DIR, sessionId);
+        const socket = this.sessions.get(sessionId);
+
+        // محاولة تسجيل الخروج إذا كانت الجلسة متصلة
+        if (socket) {
+            try {
+                await socket.logout();
+            } catch (logoutError) {
+                console.warn(`Logout warning for ${sessionId}:`, logoutError);
+            }
+        }
+
+        // تنظيف الجلسة من الذاكرة
+        await this.cleanupSession(sessionId);
+
+        // حذف مجلد الجلسة
+        if (await fs.pathExists(sessionPath)) {
+            await fs.remove(sessionPath);
+        }
+
+        // حذف البيانات من المتغيرات العامة
+        this.sessions.delete(sessionId);
+        this.qrCodes.delete(sessionId);
+        this.connectionStates.delete(sessionId);
+
+        return {
+            success: true,
+            message: 'Device deleted successfully',
+            sessionId
+        };
+    } catch (error) {
+        console.error('Delete device error:', error);
+        throw error;
+    }
+}
+
+/**
+ * التحقق من وجود الجهاز
+ */
+async function deviceExists(sessionId) {
+    const sessionPath = path.join(SESSIONS_DIR, sessionId);
+    return await fs.pathExists(sessionPath);
+}
+
 module.exports = {
     sessions,
     qrCodes,
@@ -336,5 +382,7 @@ module.exports = {
     sendMessage,
     checkConnectionState,
     getAllSessions,
+    deleteDevice,
+    deviceExists
 
 };

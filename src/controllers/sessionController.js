@@ -149,6 +149,105 @@ class SessionController {
             }));
         }
     }
+
+    static async deleteDevice(req, res) {
+        const { sessionId } = req.params;
+
+        try {
+            if (!sessionId) {
+                return res.status(400).json(
+                    formatResponse(false, 'Session ID is required')
+                );
+            }
+
+            // التحقق من وجود الجهاز
+            const exists = await whatsappService.deviceExists(sessionId);
+            if (!exists) {
+                return res.status(404).json(
+                    formatResponse(false, 'Device not found')
+                );
+            }
+
+            // حذف الجهاز
+            const result = await whatsappService.deleteDevice(sessionId);
+
+            res.json(formatResponse(true, 'Device deleted successfully', {
+                sessionId,
+                deleted: true,
+                timestamp: new Date().toISOString()
+            }));
+
+        } catch (error) {
+            console.error('Delete device error:', error);
+            res.status(500).json(
+                formatResponse(false, 'Failed to delete device', { 
+                    error: error.message,
+                    sessionId
+                })
+            );
+        }
+    }
+
+    /**
+     * حذف عدة أجهزة
+     */
+    static async deleteMultipleDevices(req, res) {
+        const { sessionIds } = req.body;
+
+        try {
+            if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
+                return res.status(400).json(
+                    formatResponse(false, 'Session IDs array is required')
+                );
+            }
+
+            const results = await Promise.allSettled(
+                sessionIds.map(async (sessionId) => {
+                    try {
+                        const exists = await whatsappService.deviceExists(sessionId);
+                        if (!exists) {
+                            return {
+                                sessionId,
+                                success: false,
+                                message: 'Device not found'
+                            };
+                        }
+
+                        await whatsappService.deleteDevice(sessionId);
+                        return {
+                            sessionId,
+                            success: true,
+                            message: 'Deleted successfully'
+                        };
+                    } catch (error) {
+                        return {
+                            sessionId,
+                            success: false,
+                            message: error.message
+                        };
+                    }
+                })
+            );
+
+            const summary = {
+                total: sessionIds.length,
+                successful: results.filter(r => r.value?.success).length,
+                failed: results.filter(r => !r.value?.success).length,
+                details: results.map(r => r.value)
+            };
+
+            res.json(formatResponse(true, 'Devices deletion completed', summary));
+
+        } catch (error) {
+            console.error('Delete multiple devices error:', error);
+            res.status(500).json(
+                formatResponse(false, 'Failed to delete devices', { 
+                    error: error.message
+                })
+            );
+        }
+    }
+    
 }
 
 module.exports = SessionController;
