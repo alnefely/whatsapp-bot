@@ -1,6 +1,6 @@
 const db = require('../config/database');
 
-class AutoReplyService {
+class AutoReplyService {  
     static addReply(deviceId, keyword, response, matchType = 'contains') {
         return new Promise((resolve, reject) => {
             const query = `
@@ -167,6 +167,27 @@ class AutoReplyService {
                     }
                 }
                 resolve(null);
+            });
+        });
+    }
+
+    static UpdateDeviceId(old_device_id, new_device_id) {
+        return new Promise((resolve, reject) => {
+            const query = 'UPDATE auto_replies SET device_id = ? WHERE device_id = ?';
+
+            db.run(query, [new_device_id, old_device_id], function(err) {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                } else {
+                    resolve({
+                        success: true,
+                        changes: this.changes,
+                        message: this.changes > 0 ? 
+                            'Update Device Id successfully' : 
+                            'error'
+                    });
+                }
             });
         });
     }

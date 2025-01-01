@@ -12,4 +12,8 @@ router.delete('/delete-device/:sessionId', sessionController.deleteDevice);
 // حذف عدة أجهزة
 router.post('/delete-devices', sessionController.deleteMultipleDevices);
 
+// تغيير اسم الجلسة
+router.post('/rename', sessionController.renameSession);
+
+
 module.exports = router;

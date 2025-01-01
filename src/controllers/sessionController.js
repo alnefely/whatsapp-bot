@@ -248,6 +248,49 @@ class SessionController {
         }
     }
     
+    static async renameSession(req, res) {
+        const { oldSessionId, newSessionId } = req.body;
+
+        try {
+            // التحقق من وجود البيانات المطلوبة
+            if (!oldSessionId || !newSessionId) {
+                return res.status(400).json(
+                    formatResponse(false, 'Both old and new session IDs are required')
+                );
+            }
+
+            // التحقق من صحة الأسماء
+            try {
+                whatsappService.validateSessionName(oldSessionId);
+                whatsappService.validateSessionName(newSessionId);
+            } catch (validationError) {
+                return res.status(400).json(
+                    formatResponse(false, validationError.message)
+                );
+            }
+
+            // تنفيذ عملية تغيير الاسم
+            const result = await whatsappService.renameSession(oldSessionId, newSessionId);
+
+            res.json(formatResponse(true, 'Session renamed successfully', {
+                oldSessionId,
+                newSessionId,
+                wasConnected: result.data.wasConnected,
+                isConnected: result.data.isConnected,
+                timestamp: new Date().toISOString()
+            }));
+
+        } catch (error) {
+            console.error('Rename session error:', error);
+            res.status(500).json(
+                formatResponse(false, 'Failed to rename session', { 
+                    error: error.message,
+                    oldSessionId,
+                    newSessionId
+                })
+            );
+        }
+    }
 }
 
 module.exports = SessionController;
