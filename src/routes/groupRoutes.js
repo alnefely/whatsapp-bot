@@ -11,4 +11,8 @@ router.get('/search/:sessionId', GroupController.searchGroups);
 // الحصول على تفاصيل مجموعة محددة
 router.get('/info/:sessionId/:groupId', GroupController.getGroupInfo);
 
+// router.post('/send/message', GroupController.sendGroupMessage.bind(GroupController));
+
+router.post('/:sessionId/send-message', GroupController.sendGroupMessage);
+
 module.exports = router;

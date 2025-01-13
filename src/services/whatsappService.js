@@ -949,6 +949,108 @@ class WhatsAppManager {
             throw error;
         }
     }
+
+    // ||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    async sendGroupMessage(sessionId, groupId, message) {
+        try {
+            const socket = this.sessions.get(sessionId);
+            if (!socket) {
+                throw new Error('Session not found');
+            }
+    
+            // تنسيق معرف المجموعة
+            let formattedGroupId = groupId;
+            if (!groupId.endsWith('@g.us')) {
+                formattedGroupId = `${groupId}@g.us`;
+            }
+    
+            // التحقق من صحة المجموعة
+            try {
+                const groupInfo = await socket.groupMetadata(formattedGroupId);
+                if (!groupInfo) {
+                    throw new Error('Group not found');
+                }
+            } catch (error) {
+                throw new Error('Invalid group ID or group not accessible');
+            }
+    
+            let sentMessage;
+    
+            switch (message.type.toLowerCase()) {
+                case 'text':
+                    sentMessage = await socket.sendMessage(formattedGroupId, { 
+                        text: message.text 
+                    });
+                    break;
+    
+                case 'image':
+                    sentMessage = await socket.sendMessage(formattedGroupId, {
+                        image: { url: message.url },
+                        caption: message.caption || ''
+                    });
+                    break;
+    
+                case 'video':
+                    sentMessage = await socket.sendMessage(formattedGroupId, {
+                        video: { url: message.url },
+                        caption: message.caption || ''
+                    });
+                    break;
+    
+                case 'audio':
+                    sentMessage = await socket.sendMessage(formattedGroupId, {
+                        audio: { url: message.url },
+                        mimetype: 'audio/mp4',
+                        ptt: Boolean(message.ptt)
+                    });
+                    break;
+    
+                case 'document':
+                    sentMessage = await socket.sendMessage(formattedGroupId, {
+                        document: { url: message.url },
+                        mimetype: message.mimeType || 'application/octet-stream',
+                        fileName: message.fileName || 'document'
+                    });
+                    break;
+    
+                case 'location':
+                    sentMessage = await socket.sendMessage(formattedGroupId, {
+                        location: {
+                            degreesLatitude: message.latitude,
+                            degreesLongitude: message.longitude
+                        }
+                    });
+                    break;
+    
+                case 'contact':
+                    // تنسيق رقم الهاتف
+                    const formattedNumber = message.phoneNumber.replace(/[^\d]/g, '');
+                    const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${message.name}\nTEL;type=CELL;type=VOICE;waid=${formattedNumber}:+${formattedNumber}\nEND:VCARD`;
+                    
+                    sentMessage = await socket.sendMessage(formattedGroupId, { 
+                        contacts: {
+                            displayName: message.name,
+                            contacts: [{ vcard }]
+                        }
+                    });
+                    break;
+    
+                default:
+                    throw new Error('Unsupported message type');
+            }
+    
+            return {
+                messageId: sentMessage.key.id,
+                timestamp: sentMessage.messageTimestamp,
+                status: 'sent'
+            };
+    
+        } catch (error) {
+            console.error('Send group message error:', error);
+            throw error;
+        }
+    }
+    
 }
 
 module.exports = new WhatsAppManager();

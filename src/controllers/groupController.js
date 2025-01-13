@@ -104,7 +104,77 @@ class GroupController {
         }
     }
 
+
+    static async sendGroupMessage(req, res) {
+        const { sessionId } = req.params;
+        const { groupId, message } = req.body;
     
+        try {
+            // التحقق من البيانات المطلوبة
+            if (!sessionId || !groupId || !message || !message.type) {
+                return res.status(400).json(
+                    formatResponse(false, 'Session ID, Group ID, and message with type are required')
+                );
+            }
+    
+            // التحقق من نوع الرسالة والبيانات المطلوبة
+            switch (message.type.toLowerCase()) {
+                case 'text':
+                    if (!message.text) {
+                        return res.status(400).json(
+                            formatResponse(false, 'Text message content is required')
+                        );
+                    }
+                    break;
+    
+                case 'contact':
+                    if (!message.name || !message.phoneNumber) {
+                        return res.status(400).json(
+                            formatResponse(false, 'Contact name and phone number are required')
+                        );
+                    }
+                    break;
+    
+                case 'image':
+                case 'video':
+                case 'audio':
+                case 'document':
+                    if (!message.url) {
+                        return res.status(400).json(
+                            formatResponse(false, 'Media URL is required')
+                        );
+                    }
+                    break;
+    
+                case 'location':
+                    if (!message.latitude || !message.longitude) {
+                        return res.status(400).json(
+                            formatResponse(false, 'Latitude and longitude are required for location')
+                        );
+                    }
+                    break;
+    
+                default:
+                    return res.status(400).json(
+                        formatResponse(false, 'Unsupported message type')
+                    );
+            }
+    
+            const result = await whatsappService.sendGroupMessage(sessionId, groupId, message);
+            res.json(formatResponse(true, 'Message sent successfully', result));
+    
+        } catch (error) {
+            console.error('Send group message error:', error);
+            res.status(500).json(
+                formatResponse(false, 'Failed to send message', {
+                    error: error.message,
+                    groupId
+                })
+            );
+        }
+    }
+
+
 }
 
 module.exports = GroupController;
