@@ -800,76 +800,80 @@ class WhatsAppManager {
             if (!socket) {
                 throw new Error('Session not found');
             }
-
-            // تنظيف رقم الهاتف
+    
+            // تنظيف رقم الهاتف وإضافة + إذا لم تكن موجودة
             let formattedNumber = phoneNumber.replace(/[^0-9]/g, '');
-            
+        
             // التحقق من الرقم
             const [result] = await socket.onWhatsApp(formattedNumber);
-            
+    
             if (!result || !result.exists) {
                 return {
                     exists: false,
                     phoneNumber: formattedNumber
                 };
             }
-
+    
             let profileData = {
                 name: null,
                 pictureUrl: null,
                 status: null
             };
-
-            try {
-                // جلب معلومات الملف الشخصي باستخدام أمر جديد
-                const contactInfo = await socket.fetchContactInfo(result.jid);
-                profileData.name = contactInfo?.pushname || contactInfo?.notify || null;
-                
-                // محاولة بديلة للحصول على الاسم
-                if (!profileData.name) {
-                    const metadata = await socket.groupMetadata(result.jid).catch(() => null);
-                    if (metadata) {
-                        profileData.name = metadata.subject;
-                    }
-                }
-            } catch (error) {
-                console.log('Error fetching contact info:', error);
+    
+            // جلب الاسم من pushName (إذا كان متاحًا)
+            if (result.pushName) {
+                profileData.name = result.pushName;
             }
-
+    
+            // إذا لم يتم العثور على الاسم، جلب معلومات الاتصال
+            if (!profileData.name && socket.fetchContact) {
+                try {
+                    const contactInfo = await socket.fetchContact(result.jid);
+                    profileData.name = contactInfo?.name || contactInfo?.notify || null;
+                } catch (error) {
+                    console.log('Error fetching contact info:', error);
+                }
+            }
+    
+            // إذا لم يتم العثور على الاسم، البحث في store.contacts (إذا كان متاحًا)
+            if (!profileData.name && socket.store?.contacts) {
+                try {
+                    const contact = socket.store.contacts.get(result.jid);
+                    if (contact?.name) {
+                        profileData.name = contact.name;
+                    }
+                } catch (error) {
+                    console.log('Error fetching contact from store:', error);
+                }
+            }
+    
+            // إذا لم يتم العثور على الاسم، نتركه فارغًا
+            if (!profileData.name) {
+                profileData.name = ''; // نترك الاسم فارغًا
+            }
+    
+            // جلب الصورة الشخصية
             try {
-                // محاولة جلب الصورة الشخصية
                 profileData.pictureUrl = await socket.profilePictureUrl(result.jid, 'image');
             } catch (error) {
                 console.log('No profile picture available');
             }
-
+    
+            // جلب الحالة
             try {
-                // محاولة جلب الحالة
                 const status = await socket.fetchStatus(result.jid);
                 profileData.status = status?.status || null;
             } catch (error) {
                 console.log('No status available');
             }
-
-            // محاولة بديلة للحصول على معلومات الاتصال
-            try {
-                await socket.sendPresenceUpdate('available', result.jid);
-                const chats = await socket.fetchChats();
-                const chat = chats.find(c => c.id === result.jid);
-                if (chat && !profileData.name) {
-                    profileData.name = chat.name;
-                }
-            } catch (error) {
-                console.log('Error fetching chat info:', error);
-            }
-
+    
             return {
                 exists: true,
-                phoneNumber: formattedNumber,
+                phoneNumber: formattedNumber, // الرقم مع +
                 jid: result.jid,
                 profile: profileData
             };
-
+    
         } catch (error) {
             console.error('Check phone number error:', error);
             throw error;
@@ -883,11 +887,13 @@ class WhatsAppManager {
             if (!socket) {
                 throw new Error('Session not found');
             }
-
-            const formattedNumbers = phoneNumbers.map(number => 
-                number.replace(/[^0-9]/g, '')
-            );
-
+    
+            const formattedNumbers = phoneNumbers.map(number => {
+                // تنظيف رقم الهاتف وإضافة + إذا لم تكن موجودة
+                let formattedNumber = number.replace(/[^0-9]/g, '');
+                return formattedNumber;
+            });
+    
             const results = await Promise.all(
                 formattedNumbers.map(async (number) => {
                     try {
@@ -898,37 +904,62 @@ class WhatsAppManager {
                                 exists: false
                             };
                         }
-
+    
                         let profileData = {
                             name: null,
-                            pictureUrl: null
+                            pictureUrl: null,
+                            status: null  // إضافة الحالة هنا
                         };
-
-                        try {
-                            const contactInfo = await socket.fetchContactInfo(result.jid);
-                            profileData.name = contactInfo?.pushname || contactInfo?.notify || null;
-
+    
+                        // جلب الاسم من pushName (إذا كان متاحًا)
+                        if (result.pushName) {
+                            profileData.name = result.pushName;
+                        }
+    
+                        // إذا لم يتم العثور على الاسم، جلب معلومات الاتصال
+                        if (!profileData.name && socket.fetchContact) {
                             try {
-                                profileData.pictureUrl = await socket.profilePictureUrl(result.jid, 'image');
-                            } catch (picError) {
-                                // تجاهل أخطاء الصورة
-                            }
-                        } catch (contactError) {
-                            // محاولة بديلة للحصول على المعلومات
-                            try {
-                                await socket.sendPresenceUpdate('available', result.jid);
-                                const chats = await socket.fetchChats();
-                                const chat = chats.find(c => c.id === result.jid);
-                                if (chat) {
-                                    profileData.name = chat.name;
-                                }
-                            } catch (chatError) {
-                                // تجاهل الأخطاء
+                                const contactInfo = await socket.fetchContact(result.jid);
+                                profileData.name = contactInfo?.name || contactInfo?.notify || null;
+                            } catch (error) {
+                                console.log('Error fetching contact info:', error);
                             }
                         }
-
+    
+                        // إذا لم يتم العثور على الاسم، البحث في store.contacts (إذا كان متاحًا)
+                        if (!profileData.name && socket.store?.contacts) {
+                            try {
+                                const contact = socket.store.contacts.get(result.jid);
+                                if (contact?.name) {
+                                    profileData.name = contact.name;
+                                }
+                            } catch (error) {
+                                console.log('Error fetching contact from store:', error);
+                            }
+                        }
+    
+                        // إذا لم يتم العثور على الاسم، نتركه فارغًا
+                        if (!profileData.name) {
+                            profileData.name = ''; // نترك الاسم فارغًا
+                        }
+    
+                        // جلب الصورة الشخصية
+                        try {
+                            profileData.pictureUrl = await socket.profilePictureUrl(result.jid, 'image');
+                        } catch (error) {
+                            console.log('No profile picture available');
+                        }
+    
+                        // جلب الحالة
+                        try {
+                            const status = await socket.fetchStatus(result.jid);
+                            profileData.status = status?.status || null;
+                        } catch (error) {
+                            console.log('No status available');
+                        }
+    
                         return {
-                            phoneNumber: number,
+                            phoneNumber: number, // الرقم مع +
                             exists: true,
                             jid: result.jid,
                             profile: profileData
@@ -942,7 +973,7 @@ class WhatsAppManager {
                     }
                 })
             );
-
+    
             return results;
         } catch (error) {
             console.error('Check multiple phone numbers error:', error);
@@ -1051,6 +1082,10 @@ class WhatsAppManager {
         }
     }
     
+
+    static getSocket(device_id) {
+        return this.sessions.get(device_id) || null;
+    }
 }
 
 module.exports = new WhatsAppManager();

@@ -34,22 +34,28 @@ class AutoReplyController {
 
     static async updateReply(req, res) {
         try {
-            const { device_id, keyword, response, match_type } = req.body;
-
+            const { device_id, oldKeyword, newKeyword, response, match_type } = req.body;
+    
             // التحقق من وجود البيانات المطلوبة
-            if (!device_id || !keyword || !response) {
+            if (!device_id || !oldKeyword || !newKeyword || !response) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Missing required fields: device_id, keyword, and response are required',
+                    message: 'Missing required fields: device_id, oldKeyword, newKeyword, and response are required',
                     data: null
                 });
             }
-
-            const result = await AutoReplyService.updateReply(device_id, keyword, {
-                response,
-                match_type: match_type || 'contains'
-            });
-
+    
+            // تحديث الرد التلقائي باستخدام الكلمة القديمة والجديدة
+            const result = await AutoReplyService.updateReply(
+                device_id,
+                oldKeyword, // الكلمة القديمة
+                {
+                    keyword: newKeyword, // الكلمة الجديدة
+                    response,
+                    match_type: match_type || 'contains'
+                }
+            );
+    
             res.json({
                 success: true,
                 message: result.added ? 'Auto reply added successfully' : 'Auto reply updated successfully',

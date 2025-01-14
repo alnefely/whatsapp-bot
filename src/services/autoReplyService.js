@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const WhatsAppService = require('../services/whatsappService');
 
 class AutoReplyService {  
     static addReply(deviceId, keyword, response, matchType = 'contains') {
@@ -20,43 +21,41 @@ class AutoReplyService {
         });
     }
 
-    static updateReply(device_id, keyword, newData) {
+    static updateReply(device_id, oldKeyword, newData) {
         return new Promise((resolve, reject) => {
+            // التحقق من وجود الكلمة الجديدة في البيانات
+            const newKeyword = newData.keyword || oldKeyword;
+    
             const query = `
                 UPDATE auto_replies 
-                SET response = ?, match_type = ?
+                SET keyword = ?, response = ?, match_type = ?
                 WHERE device_id = ? AND keyword = ?
             `;
-            
+    
             db.run(
-                query, 
-                [newData.response, newData.match_type || 'contains', device_id, keyword],
-                function(err) {
+                query,
+                [newKeyword, newData.response, newData.match_type || 'contains', device_id, oldKeyword],
+                function (err) {
                     if (err) {
                         console.error('Update error:', err);
                         reject(err);
                     } else {
                         if (this.changes > 0) {
+                            // إذا تم تحديث الرد بنجاح
                             resolve({
                                 success: true,
                                 changes: this.changes,
-                                message: 'Reply updated successfully'
+                                message: 'Reply updated successfully',
+                                added: false
                             });
                         } else {
-                            // إذا لم يتم العثور على الرد، نقوم بإضافته
-                            AutoReplyService.addReply(
-                                device_id,
-                                keyword,
-                                newData.response,
-                                newData.match_type
-                            ).then(result => {
-                                resolve({
-                                    success: true,
-                                    changes: 1,
-                                    message: 'Reply added successfully',
-                                    added: true
-                                });
-                            }).catch(reject);
+                            // إذا لم يتم العثور على الرد
+                            resolve({
+                                success: false,
+                                changes: 0,
+                                message: 'Reply not found: The old keyword does not exist',
+                                added: false
+                            });
                         }
                     }
                 }
