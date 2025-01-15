@@ -24,6 +24,11 @@ class MessageController {
         const sock = checkSession(sessionId, res);
         if (!sock) return;
 
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
+
         try {
             const result = await MessageService.sendText(sock, to, message);
             res.json(formatResponse(true, 'Message sent successfully', result));
@@ -42,6 +47,11 @@ class MessageController {
 
         const sock = checkSession(sessionId, res);
         if (!sock) return;
+
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
 
         try {
             const result = await MessageService.sendImage(sock, to, image, caption);
@@ -62,6 +72,11 @@ class MessageController {
         const sock = checkSession(sessionId, res);
         if (!sock) return;
 
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
+
         try {
             const result = await MessageService.sendVideo(sock, to, video, caption);
             res.json(formatResponse(true, 'Video sent successfully', result));
@@ -80,6 +95,11 @@ class MessageController {
 
         const sock = checkSession(sessionId, res);
         if (!sock) return;
+
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
 
         try {
             const result = await MessageService.sendPdf(sock, to, pdf, fileName, caption);
@@ -100,6 +120,11 @@ class MessageController {
         const sock = checkSession(sessionId, res);
         if (!sock) return;
 
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
+
         try {
             const result = await MessageService.sendAudio(sock, to, audio, isVoiceNote);
             res.json(formatResponse(true, 'Audio sent successfully', result));
@@ -119,6 +144,11 @@ class MessageController {
         const sock = checkSession(sessionId, res);
         if (!sock) return;
 
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
+
         try {
             const result = await MessageService.sendLocation(sock, to, latitude, longitude);
             res.json(formatResponse(true, 'Location sent successfully', result));
@@ -137,6 +167,11 @@ class MessageController {
 
         const sock = checkSession(sessionId, res);
         if (!sock) return;
+
+        const checkPhone = await whatsappService.checkPhoneNumber(sessionId, to);
+        if( !checkPhone.exists ){
+            return res.json(formatResponse(false, "Phone number not found on WhatsApp", checkPhone));
+        }
 
         try {
             const result = await MessageService.sendContact(sock, to, contactData);

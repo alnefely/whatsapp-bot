@@ -995,9 +995,10 @@ class WhatsAppManager {
                 formattedGroupId = `${groupId}@g.us`;
             }
     
-            // التحقق من صحة المجموعة
+            // الحصول على معلومات المجموعة
+            let groupInfo;
             try {
-                const groupInfo = await socket.groupMetadata(formattedGroupId);
+                groupInfo = await socket.groupMetadata(formattedGroupId);
                 if (!groupInfo) {
                     throw new Error('Group not found');
                 }
@@ -1070,10 +1071,17 @@ class WhatsAppManager {
                     throw new Error('Unsupported message type');
             }
     
+            // إرجاع تفاصيل الرسالة مع اسم المجموعة
             return {
+                success: true,
                 messageId: sentMessage.key.id,
                 timestamp: sentMessage.messageTimestamp,
-                status: 'sent'
+                status: 'sent',
+                group: {
+                    id: formattedGroupId,
+                    name: groupInfo.subject, // اسم المجموعة
+                    participants: groupInfo.participants.length // عدد المشاركين
+                }
             };
     
         } catch (error) {
