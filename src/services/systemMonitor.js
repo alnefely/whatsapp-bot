@@ -136,10 +136,10 @@ class SystemMonitor {
             for (const [sessionId, socket] of sessionsArray) {
                 const isConnected = socket?.user?.id ? true : false;
                 const sessionInfo = {
-                    id: sessionId,
+                    id: sessionId.slice(-12, -1),
                     connected: isConnected,
                     user: isConnected ? {
-                        id: socket.user.id,
+                        id: socket.user.id.slice(0, 6),
                         name: socket.user.name || 'Unknown'
                     } : null
                 };

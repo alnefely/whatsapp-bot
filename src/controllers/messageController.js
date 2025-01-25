@@ -184,16 +184,34 @@ class MessageController {
     // إرسال رسائل جماعية
     static async sendBulk(req, res) {
         const { sessionId, numbers, message, type, mediaData } = req.body;
-
+    
         if (!sessionId || !Array.isArray(numbers) || !message) {
             return res.status(400).json(formatResponse(false, 'Missing required parameters'));
         }
-
+    
         const sock = checkSession(sessionId, res);
         if (!sock) return;
-
+    
         try {
-            const results = await MessageService.sendBulk(sock, numbers, message, type, mediaData);
+            // التحقق مما إذا كانت الأرقام تحتوي على واتساب
+            const validNumbers = [];
+            for (const number of numbers) {
+                try {
+                    const [result] = await sock.onWhatsApp(number);
+                    if (result && result.exists) {
+                        validNumbers.push(number);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to check WhatsApp status for ${number}:`, error.message);
+                }
+            }
+    
+            if (validNumbers.length === 0) {
+                return res.status(400).json(formatResponse(false, 'No valid WhatsApp numbers found'));
+            }
+    
+            // إرسال الرسائل فقط للأرقام الصالحة
+            const results = await MessageService.sendBulk(sock, validNumbers, message, type, mediaData);
             res.json(formatResponse(true, 'Bulk messages processed', { results }));
         } catch (error) {
             res.status(500).json(formatResponse(false, 'Failed to process bulk messages', { error: error.message }));

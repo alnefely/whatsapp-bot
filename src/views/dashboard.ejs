@@ -158,7 +158,6 @@
             const socket = io(window.location.origin);
 
             socket.on('connect', () => {
-                console.log('Connected to server');
                 connectionStatus.textContent = 'متصل';
                 connectionStatus.classList.remove('disconnected');
                 connectionStatus.classList.add('connected');
@@ -180,7 +179,6 @@
 
             socket.on('systemUpdate', (data) => {
                 try {
-                    console.log('Received system update:', data);
                     if (data.system) updateSystemInfo(data.system);
                     if (data.whatsapp) updateWhatsAppStatus(data.whatsapp);
                 } catch (error) {
